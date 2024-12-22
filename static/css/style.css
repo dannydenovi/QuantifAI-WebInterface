@@ -1,0 +1,212 @@
+/* General body styles */
+body {
+    background: #f6f8fc;
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+/* Header styles */
+header {
+    background: linear-gradient(145deg, #ff7675, #fd79a8);
+    color: white;
+    padding: 30px 0;
+    text-align: center;
+    border-radius: 12px;
+    box-shadow: 5px 5px 15px #c85b5b, -5px -5px 15px #ffa0a8;
+    margin-bottom: 20px;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 2.8rem;
+    font-weight: bold;
+    text-shadow: 2px 2px 3px #c85b5b;
+}
+
+header p {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+/* Container styles */
+.container {
+    background: linear-gradient(145deg, #e3e6f3, #ffffff);
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 7px 7px 15px #b9bccf, -7px -7px 15px #ffffff;
+    margin-top: 20px;
+}
+
+/* Dropzone styles */
+.dropzone {
+    border: none;
+    background: linear-gradient(145deg, #d6dbeb, #ffffff);
+    border-radius: 15px;
+    padding: 20px;
+    text-align: center;
+    color: #555;
+    font-weight: bold;
+    transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    box-shadow: inset 5px 5px 10px #b9bccf, inset -5px -5px 10px #ffffff;
+}
+
+.dropzone:hover {
+    background-color: #cdd4e4;
+    cursor: pointer;
+    box-shadow: inset 2px 2px 5px #b9bccf, inset -2px -2px 5px #ffffff;
+}
+
+/* Input and select styles */
+input.form-control, select.form-select {
+    background: linear-gradient(145deg, #e3e6f3, #ffffff);
+    border: none;
+    border-radius: 15px;
+    padding: 10px;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #555;
+    box-shadow: inset 5px 5px 10px #b9bccf, inset -5px -5px 10px #ffffff;
+    transition: box-shadow 0.2s ease-in-out, background-color 0.2s ease-in-out;
+}
+
+input.form-control:focus, select.form-select:focus {
+    outline: none;
+    background-color: #cdd4e4;
+    box-shadow: inset 2px 2px 5px #b9bccf, inset -2px -2px 5px #ffffff;
+}
+
+/* Button styles */
+button.btn-primary {
+    background: linear-gradient(145deg, #ff7675, #fd79a8);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    margin-top: 10px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: box-shadow 0.2s ease-in-out;
+    box-shadow: 5px 5px 15px #c85b5b, -5px -5px 15px #ffa0a8;
+}
+
+button.btn-primary:hover {
+    box-shadow: 3px 3px 10px #c85b5b, -3px -3px 10px #ffa0a8;
+}
+
+/* Modal styles */
+.modal-header {
+    background: linear-gradient(145deg, #ff7675, #fd79a8);
+    color: white;
+    border-bottom: none;
+    border-radius: 12px 12px 0 0;
+    padding: 20px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+.modal-body {
+    background: linear-gradient(145deg, #e3e6f3, #ffffff);
+    padding: 20px;
+    color: #555;
+    font-size: 1rem;
+    border-radius: 0 0 12px 12px;
+    box-shadow: inset 5px 5px 10px #b9bccf, inset -5px -5px 10px #ffffff;
+}
+
+.modal-footer {
+    border-top: none;
+    justify-content: center;
+    background: linear-gradient(145deg, #e3e6f3, #ffffff);
+    border-radius: 0 0 12px 12px;
+    padding: 10px;
+}
+
+.modal-content {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 7px 7px 15px #b9bccf, -7px -7px 15px #ffffff;
+}
+
+/* Spinner styles */
+#loadingSpinner {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+    color: #ff7675;
+}
+
+/* Footer styles */
+footer {
+    margin-top: 20px;
+    background: linear-gradient(145deg, #e3e6f3, #ffffff);
+    border-radius: 12px;
+    padding: 10px 20px;
+    text-align: center;
+    font-size: 0.9rem;
+    color: #555;
+    box-shadow: 5px 5px 15px #b9bccf, -5px -5px 15px #ffffff;
+}
+
+footer a {
+    color: #ff7675;
+    text-decoration: none;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
+
+#metricsContainer h5,
+#metricsContainer h6 {
+    margin-top: 20px;
+    font-weight: bold;
+}
+
+#metricsContainer p,
+#downloadList p {
+    margin: 5px 0;
+}
+
+#downloadList a {
+    display: block;
+    margin: 10px 0;
+}
+
+/* Neumorphic button styles for download links */
+.download-btn {
+    display: inline-block;
+    background: linear-gradient(145deg, #e3e6f3, #ffffff);
+    color: #555;
+    border: none;
+    border-radius: 15px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: bold;
+    text-align: center;
+    text-decoration: none;
+    transition: box-shadow 0.2s ease-in-out, background-color 0.2s ease-in-out;
+    box-shadow: 5px 5px 15px #b9bccf, -5px -5px 15px #ffffff;
+}
+
+.download-btn:hover {
+    background: #d6dbeb;
+    box-shadow: 2px 2px 10px #b9bccf, -2px -2px 10px #ffffff;
+    color: #333;
+    text-decoration: none;
+}
+
