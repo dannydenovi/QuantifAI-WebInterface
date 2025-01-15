@@ -87,6 +87,10 @@ function populateModal(result) {
                 metricsContainer.appendChild(metric);
             }
         }
+    } else {
+        const noMetrics = document.createElement('p');
+        noMetrics.textContent = 'Here is your quantized model!';
+        metricsContainer.appendChild
     }
 
     // Add download buttons if files are available

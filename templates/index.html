@@ -40,6 +40,7 @@
 
             <!-- Parameters -->
             <h4 class="mt-4">Parameters</h4>
+
             <div class="row mb-3">
                 <div class="col-md-6">
                     <label for="model_class" class="form-label">Model Class (Required)</label>
@@ -62,17 +63,40 @@
             </div>
             <div class="row mb-3">
                 <div class="col-md-6">
+                    <label for="quantization_mode" class="form-label">Quantization Mode</label>
+                    <select class="form-select" id="quantization_mode" name="quantization_mode">
+                        <option value="static" selected>Static</option>
+                        <option value="dynamic">Dyanamic</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="quantization_type" class="form-label">Quantization DataType</label>
+                    <select class="form-select" id="quantization_type" name="quantization_type">
+                        <option value="static" selected>Int8</option>
+                        <option value="dynamic">Float16</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4">
                     <label for="is_classification" class="form-label">Is Classification</label>
                     <select class="form-select" id="is_classification" name="is_classification">
                         <option value="False" selected>False</option>
                         <option value="True">True</option>
                     </select>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label for="save_onnx" class="form-label">Save ONNX</label>
                     <select class="form-select" id="save_onnx" name="save_onnx">
                         <option value="False" selected>False</option>
                         <option value="True">True</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="evaluate_metrics" class="form-label">Evaluate Metrics</label>
+                    <select class="form-select" id="evaluate_metrics" name="evaluate_metrics">
+                        <option value="False" selected>True</option>
+                        <option value="True">False</option>
                     </select>
                 </div>
             </div>

@@ -29,6 +29,9 @@ def convert():
         input_format = request.form.get('input_format')
         num_batches = request.form.get('num_batches')
         is_classification = request.form.get('is_classification')
+        quantization_method = request.form.get('quantization_method')
+        quantization_type = request.form.get('quantization_type')
+        evaluate_metrics = request.form.get('evaluate_metrics')
         save_onnx = request.form.get('save_onnx')
         args = request.form.get('args')
 
@@ -63,6 +66,9 @@ def convert():
                 'input_format': input_format,
                 'num_batches': num_batches,
                 'is_classification': is_classification,
+                'quantization_method': quantization_method,
+                'quantization_type': quantization_type,
+                'evaluate_metrics': evaluate_metrics,
                 'save_onnx': save_onnx,
                 'args': args
             },
@@ -121,4 +127,4 @@ def download_onnx():
     return jsonify({"error": "ONNX model not found"}), 404
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5001, debug=True)
