@@ -29,7 +29,7 @@ def convert():
         input_format = request.form.get('input_format')
         num_batches = request.form.get('num_batches')
         is_classification = request.form.get('is_classification')
-        quantization_method = request.form.get('quantization_method')
+        quantization_method = request.form.get('quantization_mode')
         quantization_type = request.form.get('quantization_type')
         evaluate_metrics = request.form.get('evaluate_metrics')
         save_onnx = request.form.get('save_onnx')
@@ -66,7 +66,7 @@ def convert():
                 'input_format': input_format,
                 'num_batches': num_batches,
                 'is_classification': is_classification,
-                'quantization_method': quantization_method,
+                'quantization_mode': quantization_method,
                 'quantization_type': quantization_type,
                 'evaluate_metrics': evaluate_metrics,
                 'save_onnx': save_onnx,
