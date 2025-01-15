@@ -24,6 +24,17 @@ function handleFileInput(dropzoneId, inputId) {
         const file = e.dataTransfer.files[0];
         dropzone.textContent = `Uploaded: ${file.name}`;
         fileInput.files = e.dataTransfer.files; // Assign dropped file to input
+
+        if(inputId == "pythonFile"){
+            // Remove the extension '.py' from the file name
+            const fileNameWithoutExtension = file.name.replace(/\.py$/, '');
+
+            // Find the input field and set its value
+            const classNameInput = document.getElementById("model_class");
+            if (classNameInput) {
+                classNameInput.value = fileNameWithoutExtension;
+            }
+        }
     });
 
     // Handle file selection via file dialog
@@ -31,6 +42,16 @@ function handleFileInput(dropzoneId, inputId) {
         const file = fileInput.files[0];
         if (file) {
             dropzone.textContent = `Uploaded: ${file.name}`;
+            if(inputId == "pythonFile"){
+                // Remove the extension '.py' from the file name
+                const fileNameWithoutExtension = file.name.replace(/\.py$/, '');
+    
+                // Find the input field and set its value
+                const classNameInput = document.getElementById("model_class");
+                if (classNameInput) {
+                    classNameInput.value = fileNameWithoutExtension;
+                }
+            }
         }
     });
 }
