@@ -134,8 +134,6 @@ function populateModal(result) {
     const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
     resultModal.show();
 }
-
-// Form submission handler
 document.getElementById('modelForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -143,18 +141,38 @@ document.getElementById('modelForm').addEventListener('submit', async (e) => {
     const formData = new FormData(form);
 
     // Append file inputs to the FormData
-    if (document.getElementById('testSetFile').files[0]) {
-        formData.append('testSetFile', document.getElementById('testSetFile').files[0]);
+    ['testSetFile', 'trainingSetFile', 'pythonFile', 'modelFile'].forEach((fieldId) => {
+        const fileInput = document.getElementById(fieldId);
+        if (fileInput && fileInput.files[0]) {
+            formData.append(fieldId, fileInput.files[0]);
+        }
+    });
+
+    // Append quantization options to the FormData
+    const staticQuantization = [];
+    if (document.getElementById('staticQuantInt8').checked) staticQuantization.push('int8');
+    if (document.getElementById('staticQuantFloat16').checked) staticQuantization.push('float16');
+    if (staticQuantization.length > 0) {
+        formData.append('staticQuantization', staticQuantization.join(','));
     }
-    if (document.getElementById('trainingSetFile').files[0]) {
-        formData.append('trainingSetFile', document.getElementById('trainingSetFile').files[0]);
+
+    const dynamicQuantization = [];
+    if (document.getElementById('dynamicQuantInt8').checked) dynamicQuantization.push('int8');
+    if (document.getElementById('dynamicQuantFloat16').checked) dynamicQuantization.push('float16');
+    if (dynamicQuantization.length > 0) {
+        formData.append('dynamicQuantization', dynamicQuantization.join(','));
     }
-    if (document.getElementById('pythonFile').files[0]) {
-        formData.append('pythonFile', document.getElementById('pythonFile').files[0]);
-    }
-    if (document.getElementById('modelFile').files[0]) {
-        formData.append('modelFile', document.getElementById('modelFile').files[0]);
-    }
+
+    // Debug: Print formData as JSON
+    const formDataJson = {};
+    formData.forEach((value, key) => {
+        if (value instanceof File) {
+            formDataJson[key] = value.name; // Log file names
+        } else {
+            formDataJson[key] = value; // Log field values
+        }
+    });
+    console.log('Form Data Sent:', JSON.stringify(formDataJson, null, 2));
 
     try {
         showLoadingSpinner(); // Show loading spinner before making the request
@@ -170,11 +188,13 @@ document.getElementById('modelForm').addEventListener('submit', async (e) => {
 
         const result = await response.json();
         if (result) {
-            populateModal(result);
+            console.log('Server Response:', result); // Print server response for debugging
+            populateModal(result); // Display result in modal
         } else {
             alert('No response received. Please try again.');
         }
     } catch (error) {
+        console.error('Error during submission:', error); // Log errors for debugging
         alert(`Error: ${error.message}`);
     } finally {
         hideLoadingSpinner(); // Hide loading spinner after the request completes

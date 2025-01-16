@@ -210,3 +210,24 @@ footer a:hover {
     text-decoration: none;
 }
 
+/* Custom checkbox styles */
+.form-check-input {
+    width: 20px;
+    height: 20px;
+    background: linear-gradient(145deg, #e3e6f3, #ffffff);
+    border-radius: 5px;
+    box-shadow: 5px 5px 10px #b9bccf, -5px -5px 10px #ffffff;
+    transition: box-shadow 0.2s ease-in-out;
+}
+
+.form-check-input:checked {
+    background-color: #ff7675;
+    box-shadow: inset 2px 2px 5px #c85b5b, inset -2px -2px 5px #ffa0a8;
+}
+
+.form-check-label {
+    font-weight: bold;
+    color: #555;
+}
+
+
