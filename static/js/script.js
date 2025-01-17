@@ -134,6 +134,8 @@ function populateModal(result) {
     const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
     resultModal.show();
 }
+
+
 document.getElementById('modelForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -148,19 +150,20 @@ document.getElementById('modelForm').addEventListener('submit', async (e) => {
         }
     });
 
-    // Append quantization options to the FormData
-    const staticQuantization = [];
-    if (document.getElementById('staticQuantInt8').checked) staticQuantization.push('int8');
-    if (document.getElementById('staticQuantFloat16').checked) staticQuantization.push('float16');
-    if (staticQuantization.length > 0) {
-        formData.append('staticQuantization', staticQuantization.join(','));
+    // Combine staticQuantization options into a single string
+    const staticQuantizationOptions = [];
+    if (document.getElementById('staticQuantInt8').checked) staticQuantizationOptions.push('int8');
+    if (document.getElementById('staticQuantFloat16').checked) staticQuantizationOptions.push('float16');
+    if (staticQuantizationOptions.length > 0) {
+        formData.set('staticQuantization', staticQuantizationOptions.join(',')); // Use `set` to ensure no duplicates
     }
 
-    const dynamicQuantization = [];
-    if (document.getElementById('dynamicQuantInt8').checked) dynamicQuantization.push('int8');
-    if (document.getElementById('dynamicQuantFloat16').checked) dynamicQuantization.push('float16');
-    if (dynamicQuantization.length > 0) {
-        formData.append('dynamicQuantization', dynamicQuantization.join(','));
+    // Combine dynamicQuantization options into a single string
+    const dynamicQuantizationOptions = [];
+    if (document.getElementById('dynamicQuantInt8').checked) dynamicQuantizationOptions.push('int8');
+    if (document.getElementById('dynamicQuantFloat16').checked) dynamicQuantizationOptions.push('float16');
+    if (dynamicQuantizationOptions.length > 0) {
+        formData.set('dynamicQuantization', dynamicQuantizationOptions.join(',')); // Use `set` to ensure no duplicates
     }
 
     // Debug: Print formData as JSON
@@ -189,7 +192,7 @@ document.getElementById('modelForm').addEventListener('submit', async (e) => {
         const result = await response.json();
         if (result) {
             console.log('Server Response:', result); // Print server response for debugging
-            populateModal(result); // Display result in modal
+            populateResultsTable(result); // Display result in a table
         } else {
             alert('No response received. Please try again.');
         }
@@ -200,3 +203,165 @@ document.getElementById('modelForm').addEventListener('submit', async (e) => {
         hideLoadingSpinner(); // Hide loading spinner after the request completes
     }
 });
+
+document.getElementById('modelForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const form = document.getElementById('modelForm');
+    const formData = new FormData(form);
+
+    // Append file inputs to the FormData
+    ['testSetFile', 'trainingSetFile', 'pythonFile', 'modelFile'].forEach((fieldId) => {
+        const fileInput = document.getElementById(fieldId);
+        if (fileInput && fileInput.files[0]) {
+            formData.append(fieldId, fileInput.files[0]);
+        }
+    });
+
+    // Combine staticQuantization options into a single string
+    const staticQuantizationOptions = [];
+    if (document.getElementById('staticQuantInt8').checked) staticQuantizationOptions.push('int8');
+    if (document.getElementById('staticQuantFloat16').checked) staticQuantizationOptions.push('float16');
+    if (staticQuantizationOptions.length > 0) {
+        formData.set('staticQuantization', staticQuantizationOptions.join(',')); // Use `set` to ensure no duplicates
+    }
+
+    // Combine dynamicQuantization options into a single string
+    const dynamicQuantizationOptions = [];
+    if (document.getElementById('dynamicQuantInt8').checked) dynamicQuantizationOptions.push('int8');
+    if (document.getElementById('dynamicQuantFloat16').checked) dynamicQuantizationOptions.push('float16');
+    if (dynamicQuantizationOptions.length > 0) {
+        formData.set('dynamicQuantization', dynamicQuantizationOptions.join(',')); // Use `set` to ensure no duplicates
+    }
+
+    // Debug: Print formData as JSON
+    const formDataJson = {};
+    formData.forEach((value, key) => {
+        if (value instanceof File) {
+            formDataJson[key] = value.name; // Log file names
+        } else {
+            formDataJson[key] = value; // Log field values
+        }
+    });
+    console.log('Form Data Sent:', JSON.stringify(formDataJson, null, 2));
+
+    try {
+        showLoadingSpinner(); // Show loading spinner before making the request
+
+        const response = await fetch('/convert', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to submit data');
+        }
+
+        const result = await response.json();
+        if (result) {
+            console.log('Server Response:', result); // Print server response for debugging
+            populateResultsTable(result); // Display result in a table
+        } else {
+            alert('No response received. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error during submission:', error); // Log errors for debugging
+        alert(`Error: ${error.message}`);
+    } finally {
+        hideLoadingSpinner(); // Hide loading spinner after the request completes
+    }
+});
+
+function populateResultsTable(result) {
+    // Create a table to display the results
+    const tableContainer = document.getElementById('resultsTableContainer');
+    tableContainer.innerHTML = ''; // Clear any previous content
+
+    const table = document.createElement('table');
+    table.classList.add('table', 'table-striped'); // Add bootstrap styles for the table
+
+    // Create table headers
+    const headers = ['Model Type', 'Loss', 'MSE', 'R2', 'MAE', 'Model Size (MB)'];
+    const thead = table.createTHead();
+    const headerRow = thead.insertRow();
+    headers.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headerRow.appendChild(th);
+    });
+
+    // Create table body with the data from the response
+    const tbody = table.createTBody();
+
+    // Display the quantized model metrics
+    if (result.quantized_metrics) {
+        const quantizedMetrics = result.quantized_metrics.static_quantization;
+
+        const quantizedModelData = [
+            'Quantized Model',
+            quantizedMetrics.int8 ? quantizedMetrics.int8.loss : 'N/A',
+            quantizedMetrics.int8 ? quantizedMetrics.int8.mse : 'N/A',
+            quantizedMetrics.int8 ? quantizedMetrics.int8.r2 : 'N/A',
+            quantizedMetrics.int8 ? quantizedMetrics.int8.mae : 'N/A',
+            result.quantized_model_size_mb || 'N/A',
+        ];
+
+        // Add the Quantized Model row to the table
+        const quantizedRow = tbody.insertRow();
+        quantizedModelData.forEach(data => {
+            const cell = quantizedRow.insertCell();
+            cell.innerHTML = data;
+        });
+
+        // Display Static Quantization for both int8 and float16
+        const staticQuantData = [
+            'Static Quantization (int8)',
+            quantizedMetrics.int8 ? quantizedMetrics.int8.loss : 'N/A',
+            quantizedMetrics.int8 ? quantizedMetrics.int8.mse : 'N/A',
+            quantizedMetrics.int8 ? quantizedMetrics.int8.r2 : 'N/A',
+            quantizedMetrics.int8 ? quantizedMetrics.int8.mae : 'N/A',
+            result.quantized_model_size_mb || 'N/A',
+        ];
+
+        const staticQuantRow = tbody.insertRow();
+        staticQuantData.forEach(data => {
+            const cell = staticQuantRow.insertCell();
+            cell.innerHTML = data;
+        });
+
+        // Display Dynamic Quantization for both int8 and float16
+        const dynamicQuantData = [
+            'Dynamic Quantization (int8)',
+            quantizedMetrics.int8 ? quantizedMetrics.int8.loss : 'N/A',
+            quantizedMetrics.int8 ? quantizedMetrics.int8.mse : 'N/A',
+            quantizedMetrics.int8 ? quantizedMetrics.int8.r2 : 'N/A',
+            quantizedMetrics.int8 ? quantizedMetrics.int8.mae : 'N/A',
+            result.quantized_model_size_mb || 'N/A',
+        ];
+
+        const dynamicQuantRow = tbody.insertRow();
+        dynamicQuantData.forEach(data => {
+            const cell = dynamicQuantRow.insertCell();
+            cell.innerHTML = data;
+        });
+    }
+
+    // Add "Download zip file" button at the end of the table
+    const downloadRow = tbody.insertRow();
+    const downloadCell = downloadRow.insertCell();
+    downloadCell.colSpan = headers.length; // Make the button span across all columns
+    const downloadButton = document.createElement('button');
+    downloadButton.classList.add('btn', 'btn-success');
+    downloadButton.textContent = 'Download zip file';
+    downloadButton.onclick = function () {
+        window.location.href = result.download_urls['quantized_model']; // Assuming the URL points to the zip file
+    };
+    downloadCell.appendChild(downloadButton);
+
+    // Append the table to the container
+    tableContainer.appendChild(table);
+
+    // Now show the modal with the results table
+    const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+    resultModal.show();  // Show the modal after the table is populated
+}
