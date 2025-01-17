@@ -1,6 +1,8 @@
-from flask import Flask, request, jsonify, render_template, send_file
-import base64
 import os
+import uuid
+import time
+from collections import defaultdict
+from flask import Flask, request, jsonify, render_template, send_file
 import requests
 
 app = Flask(__name__)
@@ -9,10 +11,22 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024 * 1024  # 5 GB
 
+# Temporary storage for tokens
+DOWNLOAD_TOKENS = defaultdict(dict)
+
+TOKEN_LIFETIME = 300  # 5 minutes
+
+def generate_download_token(file_type):
+    token = str(uuid.uuid4())
+    expiry = time.time() + TOKEN_LIFETIME
+    DOWNLOAD_TOKENS[token] = {"file_type": file_type, "expiry": expiry}
+    return token
+
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
 
 @app.route('/convert', methods=['POST'])
 def convert():
@@ -26,36 +40,34 @@ def convert():
         # Retrieve other form parameters
         model_class = request.form.get('model_class')
         batch_size = request.form.get('batch_size')
-        input_format = request.form.get('input_format')
         num_batches = request.form.get('num_batches')
-        is_classification = request.form.get('is_classification')
-        quantization_method = request.form.get('quantization_mode')
-        quantization_type = request.form.get('quantization_type')
+        static_quantization = request.form.get('static_quantization')
+        dynamic_quantization = request.form.get('dynamic_quantization')
         evaluate_metrics = request.form.get('evaluate_metrics')
         save_onnx = request.form.get('save_onnx')
         args = request.form.get('args')
 
-        # Prepare JSON-compatible file data (Base64 encode the file content)
+        # Prepare JSON-compatible file data
         files_data = {}
         if test_set_file:
             files_data['testSetFile'] = {
                 'filename': test_set_file.filename,
-                'content': base64.b64encode(test_set_file.read()).decode('utf-8')
+                'content': test_set_file.read()
             }
         if training_set_file:
             files_data['trainingSetFile'] = {
                 'filename': training_set_file.filename,
-                'content': base64.b64encode(training_set_file.read()).decode('utf-8')
+                'content': training_set_file.read()
             }
         if python_file:
             files_data['pythonFile'] = {
                 'filename': python_file.filename,
-                'content': base64.b64encode(python_file.read()).decode('utf-8')
+                'content': python_file.read()
             }
         if model_file:
             files_data['modelFile'] = {
                 'filename': model_file.filename,
-                'content': base64.b64encode(model_file.read()).decode('utf-8')
+                'content': model_file.read()
             }
 
         # Combine files data with form parameters
@@ -63,11 +75,9 @@ def convert():
             'form': {
                 'model_class': model_class,
                 'batch_size': batch_size,
-                'input_format': input_format,
                 'num_batches': num_batches,
-                'is_classification': is_classification,
-                'quantization_mode': quantization_method,
-                'quantization_type': quantization_type,
+                'static_quantization': static_quantization,
+                'dynamic_quantization': dynamic_quantization,
                 'evaluate_metrics': evaluate_metrics,
                 'save_onnx': save_onnx,
                 'args': args
@@ -88,17 +98,23 @@ def convert():
         # Save quantized model
         if "quantized_model_base64" in response_data and response_data["quantized_model_base64"]:
             with open(quantized_model_path, "wb") as f:
-                f.write(base64.b64decode(response_data["quantized_model_base64"]))
+                f.write(response_data["quantized_model_base64"])
 
         # Save ONNX model if present
         if "onnx_base64" in response_data and response_data["onnx_base64"]:
             with open(onnx_model_path, "wb") as f:
-                f.write(base64.b64decode(response_data["onnx_base64"]))
+                f.write(response_data["onnx_base64"])
 
-        # Prepare response
-        download_urls = {"quantized_model": "/download/quantized"}
-        if "onnx_base64" in response_data and response_data["onnx_base64"]:
-            download_urls["onnx_model"] = "/download/onnx"
+        # Generate secure download tokens
+        quantized_token = generate_download_token("quantized_model")
+        onnx_token = generate_download_token("onnx_model") if "onnx_base64" in response_data else None
+
+        # Prepare download URLs with tokens
+        download_urls = {
+            "quantized_model": f"/download/{quantized_token}"
+        }
+        if onnx_token:
+            download_urls["onnx_model"] = f"/download/{onnx_token}"
 
         return jsonify({
             "download_urls": download_urls,
@@ -112,19 +128,29 @@ def convert():
     except Exception as e:
         return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
-@app.route('/download/quantized')
-def download_quantized():
-    quantized_model_path = os.path.join(UPLOAD_FOLDER, "quantized_model.pth")
-    if os.path.exists(quantized_model_path):
-        return send_file(quantized_model_path, as_attachment=True)
-    return jsonify({"error": "Quantized model not found"}), 404
 
-@app.route('/download/onnx')
-def download_onnx():
-    onnx_model_path = os.path.join(UPLOAD_FOLDER, "quantized_model.onnx")
-    if os.path.exists(onnx_model_path):
-        return send_file(onnx_model_path, as_attachment=True)
-    return jsonify({"error": "ONNX model not found"}), 404
+@app.route('/download/<token>')
+def secure_download(token):
+    file_info = DOWNLOAD_TOKENS.get(token)
+    
+    if not file_info:
+        return jsonify({"error": "Invalid or expired token"}), 404
+    
+    # Check for token expiry
+    if time.time() > file_info["expiry"]:
+        del DOWNLOAD_TOKENS[token]
+        return jsonify({"error": "Token has expired"}), 403
+    
+    file_type = file_info["file_type"]
+    file_path = os.path.join(UPLOAD_FOLDER, f"{file_type}.pth" if file_type == "quantized_model" else f"{file_type}.onnx")
+    
+    if os.path.exists(file_path):
+        # Remove the token to prevent reuse
+        del DOWNLOAD_TOKENS[token]
+        return send_file(file_path, as_attachment=True)
+    
+    return jsonify({"error": f"{file_type.replace('_', ' ').capitalize()} not found"}), 404
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)
