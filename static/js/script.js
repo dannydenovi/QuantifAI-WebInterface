@@ -179,20 +179,24 @@ document.getElementById('modelForm').addEventListener('submit', async (e) => {
 
     try {
         showLoadingSpinner(); // Show loading spinner before making the request
-
+    
         const response = await fetch('/convert', {
             method: 'POST',
             body: formData,
         });
-
+    
         if (!response.ok) {
             throw new Error('Failed to submit data');
         }
-
+    
         const result = await response.json();
         if (result) {
             console.log('Server Response:', result); // Print server response for debugging
-            populateResultsTable(result); // Display result in a table
+            renderMetricsChart(result); // Display result in the chart
+    
+            // Programmatically open the modal
+            const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+            resultModal.show();
         } else {
             alert('No response received. Please try again.');
         }
@@ -204,7 +208,7 @@ document.getElementById('modelForm').addEventListener('submit', async (e) => {
     }
 });
 
-document.getElementById('modelForm').addEventListener('submit', async (e) => {
+/* document.getElementById('modelForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const form = document.getElementById('modelForm');
@@ -260,7 +264,7 @@ document.getElementById('modelForm').addEventListener('submit', async (e) => {
         const result = await response.json();
         if (result) {
             console.log('Server Response:', result); // Print server response for debugging
-            populateResultsTable(result); // Display result in a table
+            renderMetricsChart(result); // Display result in a table
         } else {
             alert('No response received. Please try again.');
         }
@@ -270,98 +274,206 @@ document.getElementById('modelForm').addEventListener('submit', async (e) => {
     } finally {
         hideLoadingSpinner(); // Hide loading spinner after the request completes
     }
-});
+}); */
 
-function populateResultsTable(result) {
-    // Create a table to display the results
-    const tableContainer = document.getElementById('resultsTableContainer');
-    tableContainer.innerHTML = ''; // Clear any previous content
+let chartInstance = null; // Global variable to store the Chart.js instance
+function renderMetricsChart(result) {
+    // Extract metrics from the result
+    const rawMetrics = result.metrics.raw_metrics || {};
+    const quantizedMetrics = result.metrics.quantized_metrics || {};
 
-    const table = document.createElement('table');
-    table.classList.add('table', 'table-striped'); // Add bootstrap styles for the table
+    // Prepare labels for the chart
+    const labels = ['Raw Model', 'Static (int8)', 'Static (float16)', 'Dynamic (int8)', 'Dynamic (float16)'];
 
-    // Create table headers
-    const headers = ['Model Type', 'Loss', 'MSE', 'R2', 'MAE', 'Model Size (MB)'];
-    const thead = table.createTHead();
-    const headerRow = thead.insertRow();
-    headers.forEach(header => {
-        const th = document.createElement('th');
-        th.textContent = header;
-        headerRow.appendChild(th);
-    });
+    // Prepare the datasets, filtering out missing data
+    const datasets = [];
 
-    // Create table body with the data from the response
-    const tbody = table.createTBody();
-
-    // Display the quantized model metrics
-    if (result.quantized_metrics) {
-        const quantizedMetrics = result.quantized_metrics.static_quantization;
-
-        const quantizedModelData = [
-            'Quantized Model',
-            quantizedMetrics.int8 ? quantizedMetrics.int8.loss : 'N/A',
-            quantizedMetrics.int8 ? quantizedMetrics.int8.mse : 'N/A',
-            quantizedMetrics.int8 ? quantizedMetrics.int8.r2 : 'N/A',
-            quantizedMetrics.int8 ? quantizedMetrics.int8.mae : 'N/A',
-            result.quantized_model_size_mb || 'N/A',
-        ];
-
-        // Add the Quantized Model row to the table
-        const quantizedRow = tbody.insertRow();
-        quantizedModelData.forEach(data => {
-            const cell = quantizedRow.insertCell();
-            cell.innerHTML = data;
-        });
-
-        // Display Static Quantization for both int8 and float16
-        const staticQuantData = [
-            'Static Quantization (int8)',
-            quantizedMetrics.int8 ? quantizedMetrics.int8.loss : 'N/A',
-            quantizedMetrics.int8 ? quantizedMetrics.int8.mse : 'N/A',
-            quantizedMetrics.int8 ? quantizedMetrics.int8.r2 : 'N/A',
-            quantizedMetrics.int8 ? quantizedMetrics.int8.mae : 'N/A',
-            result.quantized_model_size_mb || 'N/A',
-        ];
-
-        const staticQuantRow = tbody.insertRow();
-        staticQuantData.forEach(data => {
-            const cell = staticQuantRow.insertCell();
-            cell.innerHTML = data;
-        });
-
-        // Display Dynamic Quantization for both int8 and float16
-        const dynamicQuantData = [
-            'Dynamic Quantization (int8)',
-            quantizedMetrics.int8 ? quantizedMetrics.int8.loss : 'N/A',
-            quantizedMetrics.int8 ? quantizedMetrics.int8.mse : 'N/A',
-            quantizedMetrics.int8 ? quantizedMetrics.int8.r2 : 'N/A',
-            quantizedMetrics.int8 ? quantizedMetrics.int8.mae : 'N/A',
-            result.quantized_model_size_mb || 'N/A',
-        ];
-
-        const dynamicQuantRow = tbody.insertRow();
-        dynamicQuantData.forEach(data => {
-            const cell = dynamicQuantRow.insertCell();
-            cell.innerHTML = data;
+    // Loss Data
+    const lossData = [
+        rawMetrics.loss,
+        quantizedMetrics.static_quantization?.int8?.loss,
+        quantizedMetrics.static_quantization?.float16?.loss,
+        quantizedMetrics.dynamic_quantization?.int8?.loss,
+        quantizedMetrics.dynamic_quantization?.float16?.loss
+    ];
+    if (lossData.some(value => value !== undefined && value !== null)) {
+        datasets.push({
+            label: 'Loss',
+            data: lossData.map(value => value !== undefined && value !== null ? value : null),
+            backgroundColor: 'rgba(75, 192, 192, 0.6)',
         });
     }
 
-    // Add "Download zip file" button at the end of the table
-    const downloadRow = tbody.insertRow();
-    const downloadCell = downloadRow.insertCell();
-    downloadCell.colSpan = headers.length; // Make the button span across all columns
+    // MSE Data
+    const mseData = [
+        rawMetrics.mse,
+        quantizedMetrics.static_quantization?.int8?.mse,
+        quantizedMetrics.static_quantization?.float16?.mse,
+        quantizedMetrics.dynamic_quantization?.int8?.mse,
+        quantizedMetrics.dynamic_quantization?.float16?.mse
+    ];
+    if (mseData.some(value => value !== undefined && value !== null)) {
+        datasets.push({
+            label: 'MSE',
+            data: mseData.map(value => value !== undefined && value !== null ? value : null),
+            backgroundColor: 'rgba(255, 99, 132, 0.6)',
+        });
+    }
+
+    // R² Data
+    const r2Data = [
+        rawMetrics.r2,
+        quantizedMetrics.static_quantization?.int8?.r2,
+        quantizedMetrics.static_quantization?.float16?.r2,
+        quantizedMetrics.dynamic_quantization?.int8?.r2,
+        quantizedMetrics.dynamic_quantization?.float16?.r2
+    ];
+    if (r2Data.some(value => value !== undefined && value !== null)) {
+        datasets.push({
+            label: 'R2',
+            data: r2Data.map(value => value !== undefined && value !== null ? value : null),
+            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+        });
+    }
+
+    // MAE Data
+    const maeData = [
+        rawMetrics.mae,
+        quantizedMetrics.static_quantization?.int8?.mae,
+        quantizedMetrics.static_quantization?.float16?.mae,
+        quantizedMetrics.dynamic_quantization?.int8?.mae,
+        quantizedMetrics.dynamic_quantization?.float16?.mae
+    ];
+    if (maeData.some(value => value !== undefined && value !== null)) {
+        datasets.push({
+            label: 'MAE',
+            data: maeData.map(value => value !== undefined && value !== null ? value : null),
+            backgroundColor: 'rgba(153, 102, 255, 0.6)',
+        });
+    }
+
+    // Model Size Data
+    const modelSizeData = [
+        rawMetrics.model_size,
+        quantizedMetrics.static_quantization?.int8?.model_size,
+        quantizedMetrics.static_quantization?.float16?.model_size,
+        quantizedMetrics.dynamic_quantization?.int8?.model_size,
+        quantizedMetrics.dynamic_quantization?.float16?.model_size
+    ];
+    if (modelSizeData.some(value => value !== undefined && value !== null)) {
+        datasets.push({
+            label: 'Model Size (MB)',
+            data: modelSizeData.map(value => value !== undefined && value !== null ? value : null),
+            backgroundColor: 'rgba(255, 206, 86, 0.6)',
+        });
+    }
+
+    // Remove datasets with only null or undefined values
+    datasets.forEach(dataset => {
+        dataset.data = dataset.data.filter(value => value !== null && value !== undefined);
+    });
+
+    // Remove the labels of the models that have no corresponding data
+    const validLabels = labels.filter((_, index) => datasets.some(dataset => dataset.data[index] !== null && dataset.data[index] !== undefined));
+
+    // Destroy the existing chart instance if it exists
+    if (chartInstance) {
+        chartInstance.destroy();
+    }
+
+    // Get the canvas context
+    const ctx = document.getElementById('metricsChart').getContext('2d');
+
+    // Create a new Chart.js instance and store it in the global variable
+    chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: validLabels, // Use filtered labels
+            datasets: datasets, // Use dynamically created datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false, // Allow the chart to stretch based on container
+            plugins: {
+                legend: {
+                    position: 'top', // Keep legend at the top for better visibility
+                    labels: {
+                        font: {
+                            size: 14, // Larger font size for the legend
+                        },
+                    },
+                },
+                title: {
+                    display: true,
+                    text: 'Model Metrics Comparison',
+                    font: {
+                        size: 18, // Larger font size for the title
+                        weight: 'bold',
+                    },
+                    padding: {
+                        top: 10,
+                        bottom: 30,
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Model Type',
+                        font: {
+                            size: 16, // Larger font size for axis label
+                        },
+                    },
+                    ticks: {
+                        font: {
+                            size: 14, // Larger font size for tick labels
+                        },
+                    },
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Value',
+                        font: {
+                            size: 16, // Larger font size for axis label
+                        },
+                    },
+                    ticks: {
+                        font: {
+                            size: 14, // Larger font size for tick labels
+                        },
+                    },
+                    beginAtZero: true,
+                },
+            },
+        },
+    });
+
+    // Add the download button dynamically
+    const modalBody = document.querySelector('.modal-body');
+
+    // Remove existing download button to avoid duplicates
+    const existingButton = document.getElementById('downloadButton');
+    if (existingButton) {
+        existingButton.remove();
+    }
+
+    // Create a new download button
     const downloadButton = document.createElement('button');
-    downloadButton.classList.add('btn', 'btn-success');
-    downloadButton.textContent = 'Download zip file';
-    downloadButton.onclick = function () {
-        window.location.href = result.download_urls['quantized_model']; // Assuming the URL points to the zip file
+    downloadButton.id = 'downloadButton';
+    downloadButton.classList.add('btn', 'btn-success', 'mt-3');
+    downloadButton.textContent = 'Download ZIP File';
+
+    // Set the download action
+    downloadButton.onclick = () => {
+        if (result.download_url) {
+            window.location.href = result.download_url;
+        } else {
+            alert('Download URL not available');
+        }
     };
-    downloadCell.appendChild(downloadButton);
 
-    // Append the table to the container
-    tableContainer.appendChild(table);
-
-    // Now show the modal with the results table
-    const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
-    resultModal.show();  // Show the modal after the table is populated
+    // Append the button below the chart
+    modalBody.appendChild(downloadButton);
 }

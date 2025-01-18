@@ -83,51 +83,83 @@ def convert():
     faas_response.raise_for_status()
     response_data = faas_response.json()
 
-    # Create a dictionary to hold the paths and sizes for each model
-    model_links = {}
-    model_sizes = {}
 
-    # Save quantized models from the response (if present)
-    if "quantized_models" in response_data:
-        for format, model_base64 in response_data["quantized_models"].items():
-            if isinstance(model_base64, dict):  # If it's a dictionary, check for 'data' or correct key
-                print(f"Model base64 is a dictionary, accessing the 'data' key.")
-                model_base64 = model_base64.get('data', None)  # Adjust based on actual structure
-            if model_base64:
-                model_data = base64.b64decode(model_base64)  # Decode the base64 data
-                model_filename = f"quantized_model_{format}.pth"
-                model_path = os.path.join(UPLOAD_FOLDER, model_filename)
-                with open(model_path, 'wb') as f:
-                    f.write(model_data)
-                model_links[model_filename] = f"/download/{model_filename}"
-                model_sizes[model_filename] = len(model_data) / (1024 * 1024)  # Size in MB
+   # Output ZIP file name
+    zip_file_name = f"{str(uuid.uuid4())}_models.zip"
+    zip_file_path = os.path.join(UPLOAD_FOLDER, zip_file_name)
 
-    # Save ONNX model if present
-    if "onnx_models" in response_data:
-        for format, onnx_base64 in response_data["onnx_models"].items():
-            if isinstance(onnx_base64, dict):  # If it's a dictionary, check for 'data' or correct key
-                print(f"ONNX model base64 is a dictionary, accessing the 'data' key.")
-                onnx_base64 = onnx_base64.get('data', None)  # Adjust based on actual structure
-            if onnx_base64:
-                onnx_data = base64.b64decode(onnx_base64)  # Decode the base64 data
-                onnx_filename = "quantized_model.onnx"
-                onnx_path = os.path.join(UPLOAD_FOLDER, onnx_filename)
-                with open(onnx_path, 'wb') as f:
-                    f.write(onnx_data)
-                model_links[onnx_filename] = f"/download/{onnx_filename}"
-                model_sizes[onnx_filename] = len(onnx_data) / (1024 * 1024)  # Size in MB
+    # Directory to temporarily store decoded files
+    output_dir = os.path.join(UPLOAD_FOLDER, "decoded_files")
+    os.makedirs(output_dir, exist_ok=True)
 
-    # Return download links and sizes for individual models
+    # Open ZIP file for writing
+    with zipfile.ZipFile(zip_file_path, 'w') as zipf:
+        # Iterate over the Base64 data in the response
+        for quantization_type, models in response_data["quantized_model_base64"].items():
+            # Extract the filetype (default to bin if not specified)
+            filetype = models.get("filetype", "pth")
+            for model_type, base64_string in models.items():
+                if model_type == "filetype":
+                    continue  # Skip the filetype entry
+                
+                # Decode the Base64 string
+                decoded_data = base64.b64decode(base64_string)
+                
+                # Save the decoded data to a file
+                file_name = f"{quantization_type}_{model_type}.{filetype}"
+                file_path = os.path.join(output_dir, file_name)
+                with open(file_path, 'wb') as f:
+                    f.write(decoded_data)
+                
+                # Add the file to the ZIP archive
+                zipf.write(file_path, arcname=file_name)
+
+        #print the json schema from the response
+
+        for quantization_type, models in response_data["onnx_base64"].items():
+            # Extract the filetype (default to onnx if not specified)
+            filetype = models.get("filetype", "onnx")
+            for model_type, base64_string in models.items():
+                if model_type == "filetype":
+                    continue  # Skip the filetype entry
+
+                # Decode the Base64 string
+                decoded_data = base64.b64decode(base64_string)
+
+                # Save the decoded data to a file
+                file_name = f"{quantization_type}_{model_type}.{filetype}"
+                file_path = os.path.join(output_dir, file_name)
+                with open(file_path, 'wb') as f:
+                    f.write(decoded_data)
+
+                # Add the file to the ZIP archive
+                zipf.write(file_path, arcname=file_name)
+
+
+    # Clean up temporary directory (optional)
+    for file_name in os.listdir(output_dir):
+        os.remove(os.path.join(output_dir, file_name))
+    os.rmdir(output_dir)
+
+    print(f"ZIP file created: {zip_file_path}")
+
+    # Return the metrics (both quantized and raw) along with the download URL
     return jsonify({
-        "model_links": model_links,
-        "model_sizes": model_sizes
+        "success": True,
+        "metrics": {
+            "quantized_metrics": response_data.get("quantized_metrics", {}),
+            "raw_metrics": response_data.get("raw_metrics", {})
+        },
+        "download_url": f"/download/{zip_file_name}"
     })
+
+
 
 
 # Flask route to serve individual model files when requested
 @app.route('/download/<filename>', methods=['GET'])
 def download_file(filename):
-    # Serve the file directly based on the filename
+    # Serve the ZIP file from the upload folder
     return send_from_directory(UPLOAD_FOLDER, filename, as_attachment=True)
 
 

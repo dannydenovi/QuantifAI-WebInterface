@@ -231,3 +231,15 @@ footer a:hover {
 }
 
 
+#metricsChart {
+    width: 100% !important;
+    height: 350px !important;
+}
+
+.modal-body {
+    max-height: 90vh; /* Utilize more of the viewport height */
+    overflow-y: auto; /* Enable scrolling if content overflows */
+    padding: 20px; /* Add some padding for better spacing */
+}
+
+
