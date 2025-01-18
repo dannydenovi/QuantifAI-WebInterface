@@ -278,202 +278,115 @@ document.getElementById('modelForm').addEventListener('submit', async (e) => {
 
 let chartInstance = null; // Global variable to store the Chart.js instance
 function renderMetricsChart(result) {
-    // Extract metrics from the result
     const rawMetrics = result.metrics.raw_metrics || {};
     const quantizedMetrics = result.metrics.quantized_metrics || {};
 
-    // Prepare labels for the chart
-    const labels = ['Raw Model', 'Static (int8)', 'Static (float16)', 'Dynamic (int8)', 'Dynamic (float16)'];
-
-    // Prepare the datasets, filtering out missing data
-    const datasets = [];
-
-    // Loss Data
-    const lossData = [
-        rawMetrics.loss,
-        quantizedMetrics.static_quantization?.int8?.loss,
-        quantizedMetrics.static_quantization?.float16?.loss,
-        quantizedMetrics.dynamic_quantization?.int8?.loss,
-        quantizedMetrics.dynamic_quantization?.float16?.loss
-    ];
-    if (lossData.some(value => value !== undefined && value !== null)) {
-        datasets.push({
-            label: 'Loss',
-            data: lossData.map(value => value !== undefined && value !== null ? value : null),
-            backgroundColor: 'rgba(75, 192, 192, 0.6)',
-        });
-    }
-
-    // MSE Data
-    const mseData = [
-        rawMetrics.mse,
-        quantizedMetrics.static_quantization?.int8?.mse,
-        quantizedMetrics.static_quantization?.float16?.mse,
-        quantizedMetrics.dynamic_quantization?.int8?.mse,
-        quantizedMetrics.dynamic_quantization?.float16?.mse
-    ];
-    if (mseData.some(value => value !== undefined && value !== null)) {
-        datasets.push({
-            label: 'MSE',
-            data: mseData.map(value => value !== undefined && value !== null ? value : null),
-            backgroundColor: 'rgba(255, 99, 132, 0.6)',
-        });
-    }
-
-    // R² Data
-    const r2Data = [
-        rawMetrics.r2,
-        quantizedMetrics.static_quantization?.int8?.r2,
-        quantizedMetrics.static_quantization?.float16?.r2,
-        quantizedMetrics.dynamic_quantization?.int8?.r2,
-        quantizedMetrics.dynamic_quantization?.float16?.r2
-    ];
-    if (r2Data.some(value => value !== undefined && value !== null)) {
-        datasets.push({
-            label: 'R2',
-            data: r2Data.map(value => value !== undefined && value !== null ? value : null),
-            backgroundColor: 'rgba(54, 162, 235, 0.6)',
-        });
-    }
-
-    // MAE Data
-    const maeData = [
-        rawMetrics.mae,
-        quantizedMetrics.static_quantization?.int8?.mae,
-        quantizedMetrics.static_quantization?.float16?.mae,
-        quantizedMetrics.dynamic_quantization?.int8?.mae,
-        quantizedMetrics.dynamic_quantization?.float16?.mae
-    ];
-    if (maeData.some(value => value !== undefined && value !== null)) {
-        datasets.push({
-            label: 'MAE',
-            data: maeData.map(value => value !== undefined && value !== null ? value : null),
-            backgroundColor: 'rgba(153, 102, 255, 0.6)',
-        });
-    }
-
-    // Model Size Data
-    const modelSizeData = [
-        rawMetrics.model_size,
-        quantizedMetrics.static_quantization?.int8?.model_size,
-        quantizedMetrics.static_quantization?.float16?.model_size,
-        quantizedMetrics.dynamic_quantization?.int8?.model_size,
-        quantizedMetrics.dynamic_quantization?.float16?.model_size
-    ];
-    if (modelSizeData.some(value => value !== undefined && value !== null)) {
-        datasets.push({
-            label: 'Model Size (MB)',
-            data: modelSizeData.map(value => value !== undefined && value !== null ? value : null),
-            backgroundColor: 'rgba(255, 206, 86, 0.6)',
-        });
-    }
-
-    // Remove datasets with only null or undefined values
-    datasets.forEach(dataset => {
-        dataset.data = dataset.data.filter(value => value !== null && value !== undefined);
-    });
-
-    // Remove the labels of the models that have no corresponding data
-    const validLabels = labels.filter((_, index) => datasets.some(dataset => dataset.data[index] !== null && dataset.data[index] !== undefined));
-
-    // Destroy the existing chart instance if it exists
-    if (chartInstance) {
-        chartInstance.destroy();
-    }
-
-    // Get the canvas context
-    const ctx = document.getElementById('metricsChart').getContext('2d');
-
-    // Create a new Chart.js instance and store it in the global variable
-    chartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: validLabels, // Use filtered labels
-            datasets: datasets, // Use dynamically created datasets
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false, // Allow the chart to stretch based on container
-            plugins: {
-                legend: {
-                    position: 'top', // Keep legend at the top for better visibility
-                    labels: {
-                        font: {
-                            size: 14, // Larger font size for the legend
-                        },
-                    },
-                },
-                title: {
-                    display: true,
-                    text: 'Model Metrics Comparison',
-                    font: {
-                        size: 18, // Larger font size for the title
-                        weight: 'bold',
-                    },
-                    padding: {
-                        top: 10,
-                        bottom: 30,
-                    },
-                },
-            },
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Model Type',
-                        font: {
-                            size: 16, // Larger font size for axis label
-                        },
-                    },
-                    ticks: {
-                        font: {
-                            size: 14, // Larger font size for tick labels
-                        },
-                    },
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'Value',
-                        font: {
-                            size: 16, // Larger font size for axis label
-                        },
-                    },
-                    ticks: {
-                        font: {
-                            size: 14, // Larger font size for tick labels
-                        },
-                    },
-                    beginAtZero: true,
-                },
-            },
-        },
-    });
-
-    // Add the download button dynamically
-    const modalBody = document.querySelector('.modal-body');
-
-    // Remove existing download button to avoid duplicates
-    const existingButton = document.getElementById('downloadButton');
-    if (existingButton) {
-        existingButton.remove();
-    }
-
-    // Create a new download button
-    const downloadButton = document.createElement('button');
-    downloadButton.id = 'downloadButton';
-    downloadButton.classList.add('btn', 'btn-success', 'mt-3');
-    downloadButton.textContent = 'Download ZIP File';
-
-    // Set the download action
-    downloadButton.onclick = () => {
-        if (result.download_url) {
-            window.location.href = result.download_url;
-        } else {
-            alert('Download URL not available');
-        }
+    // Prepare labels dynamically based on the available data
+    const labels = [];
+    const quantizationLabels = {
+        raw: 'Raw Model',
+        static_int8: 'Static (int8)',
+        static_float16: 'Static (float16)',
+        dynamic_int8: 'Dynamic (int8)',
+        dynamic_float16: 'Dynamic (float16)',
     };
 
-    // Append the button below the chart
-    modalBody.appendChild(downloadButton);
+    if (rawMetrics) labels.push(quantizationLabels.raw);
+    if (quantizedMetrics.static_quantization?.int8) labels.push(quantizationLabels.static_int8);
+    if (quantizedMetrics.static_quantization?.float16) labels.push(quantizationLabels.static_float16);
+    if (quantizedMetrics.dynamic_quantization?.int8) labels.push(quantizationLabels.dynamic_int8);
+    if (quantizedMetrics.dynamic_quantization?.float16) labels.push(quantizationLabels.dynamic_float16);
+
+    console.log("Labels Generated:", labels);
+
+    const datasets = [];
+
+    // Function to add datasets for specific metrics
+    function addDataset(label, metricKey, color) {
+        const data = labels.map((lbl) => {
+            if (lbl === quantizationLabels.raw) return rawMetrics[metricKey] || 0;
+            if (lbl === quantizationLabels.static_int8)
+                return quantizedMetrics.static_quantization?.int8?.[metricKey] || 0;
+            if (lbl === quantizationLabels.static_float16)
+                return quantizedMetrics.static_quantization?.float16?.[metricKey] || 0;
+            if (lbl === quantizationLabels.dynamic_int8)
+                return quantizedMetrics.dynamic_quantization?.int8?.[metricKey] || 0;
+            if (lbl === quantizationLabels.dynamic_float16)
+                return quantizedMetrics.dynamic_quantization?.float16?.[metricKey] || 0;
+            return 0; // Default value for undefined metrics
+        });
+
+        console.log(`Dataset for ${label} (${metricKey}):`, data);
+
+        // Add the dataset only if there is valid data
+        if (data.some(value => value !== undefined && value !== null)) {
+            datasets.push({
+                label: label,
+                data: data,
+                backgroundColor: color,
+            });
+        }
+    }
+    // Add datasets for metrics
+    if (result.metrics.raw_metrics.loss){
+        addDataset('Loss', 'loss', 'rgba(75, 192, 192, 0.6)');
+    }
+    if (result.metrics.raw_metrics.accuracy) {
+        addDataset('Accuracy', 'accuracy', 'rgba(255, 159, 64, 0.6)');
+    }
+    if (result.metrics.raw_metrics.r2_score) {
+        addDataset('R2 Score', 'r2_score', 'rgba(54, 162, 235, 0.6)');
+    }
+
+    addDataset('Model Size (MB)', 'model_size', 'rgba(255, 206, 86, 0.6)'); 
+
+    console.log("Final Datasets for Chart:", datasets);
+
+    if (chartInstance) chartInstance.destroy();
+
+    const ctx = document.getElementById('metricsChart').getContext('2d');
+    chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                title: { display: true, text: 'Model Metrics Comparison' },
+            },
+            scales: {
+                x: { title: { display: true, text: 'Model Type' } },
+                y: { title: { display: true, text: 'Value' }, beginAtZero: true },
+            },
+        },
+    });
+
+     // Add the download button dynamically
+     const modalBody = document.querySelector('.modal-body');
+
+     // Remove existing download button to avoid duplicates
+     const existingButton = document.getElementById('downloadButton');
+     if (existingButton) {
+         existingButton.remove();
+     }
+ 
+     // Create a new download button
+     const downloadButton = document.createElement('button');
+     downloadButton.id = 'downloadButton';
+     downloadButton.classList.add('btn', 'btn-success', 'mt-3');
+     downloadButton.textContent = 'Download ZIP File';
+ 
+     // Set the download action
+     downloadButton.onclick = () => {
+         if (result.download_url) {
+             window.location.href = result.download_url;
+         } else {
+             alert('Download URL not available');
+         }
+     };
+ 
+     // Append the button below the chart
+     modalBody.appendChild(downloadButton);
 }
+
