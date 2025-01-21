@@ -1,11 +1,10 @@
 import os
 import uuid
-import time
 from flask import Flask, request, jsonify, render_template, send_from_directory
 import requests
 import base64
 import zipfile
-import hashlib
+
 
 app = Flask(__name__)
 UPLOAD_FOLDER = "uploads"
@@ -26,6 +25,9 @@ def convert():
     training_set_file = request.files.get('trainingSetFile')
     python_file = request.files.get('pythonFile')
     model_file = request.files.get('modelFile')
+
+    #print(f"Received {test_set_file.filename} with size: {len(test_set_file.read())} bytes")
+
 
     print("form data", request.form)
 
@@ -76,6 +78,8 @@ def convert():
         },
         'files': files_data
     }
+
+    print("Sending data...")
 
     # Forward the request to the OpenFaaS function
     openfaas_function_url = 'http://127.0.0.1:8080/function/quantifai-faas'

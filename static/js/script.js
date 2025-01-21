@@ -72,69 +72,6 @@ function hideLoadingSpinner() {
     const spinner = document.getElementById('loadingSpinner');
     spinner.style.display = 'none';
 }
-function populateModal(result) {
-    const metricsContainer = document.getElementById('metricsContainer');
-    const downloadList = document.getElementById('downloadList');
-
-    metricsContainer.innerHTML = '';
-    downloadList.innerHTML = '';
-
-    // Add metrics if available
-    if (result.raw_metrics || result.quantized_metrics) {
-        const metricsTitle = document.createElement('h5');
-        metricsTitle.textContent = 'Calculated Metrics';
-        metricsContainer.appendChild(metricsTitle);
-
-        if (result.raw_metrics) {
-            const rawMetricsHeader = document.createElement('h6');
-            rawMetricsHeader.textContent = 'Raw Model Metrics';
-            metricsContainer.appendChild(rawMetricsHeader);
-
-            for (const [key, value] of Object.entries(result.raw_metrics)) {
-                const metric = document.createElement('p');
-                metric.textContent = `${key}: ${value}`;
-                metricsContainer.appendChild(metric);
-            }
-        }
-
-        if (result.quantized_metrics) {
-            const quantizedMetricsHeader = document.createElement('h6');
-            quantizedMetricsHeader.textContent = 'Quantized Model Metrics';
-            metricsContainer.appendChild(quantizedMetricsHeader);
-
-            for (const [key, value] of Object.entries(result.quantized_metrics)) {
-                const metric = document.createElement('p');
-                metric.textContent = `${key}: ${value}`;
-                metricsContainer.appendChild(metric);
-            }
-        }
-    } else {
-        const noMetrics = document.createElement('p');
-        noMetrics.textContent = 'Here is your quantized model!';
-        metricsContainer.appendChild
-    }
-
-    // Add download buttons if files are available
-    if (result.download_urls.quantized_model) {
-        const quantizedLink = document.createElement('a');
-        quantizedLink.href = result.download_urls.quantized_model;
-        quantizedLink.textContent = 'Download Quantized Model';
-        quantizedLink.className = 'download-btn mt-3';
-        downloadList.appendChild(quantizedLink);
-    }
-
-    if (result.download_urls.onnx_model) {
-        const onnxLink = document.createElement('a');
-        onnxLink.href = result.download_urls.onnx_model;
-        onnxLink.textContent = 'Download ONNX Model';
-        onnxLink.className = 'download-btn mt-3';
-        downloadList.appendChild(onnxLink);
-    }
-
-    const resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
-    resultModal.show();
-}
-
 
 document.getElementById('modelForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -278,8 +215,18 @@ document.getElementById('modelForm').addEventListener('submit', async (e) => {
 
 let chartInstance = null; // Global variable to store the Chart.js instance
 function renderMetricsChart(result) {
+    
+    if (result.metrics.quantized_metrics == null && result.metrics.raw_metrics == null) {
+        // Hide the chart if no metrics are available
+        const canvas = document.getElementById('metricsChart');
+        canvas.style.display = 'none';
+
+        return;
+    }
+
     const rawMetrics = result.metrics.raw_metrics || {};
     const quantizedMetrics = result.metrics.quantized_metrics || {};
+
 
     // Prepare labels dynamically based on the available data
     const labels = [];
@@ -331,12 +278,23 @@ function renderMetricsChart(result) {
     if (result.metrics.raw_metrics.loss){
         addDataset('Loss', 'loss', 'rgba(75, 192, 192, 0.6)');
     }
+
     if (result.metrics.raw_metrics.accuracy) {
         addDataset('Accuracy', 'accuracy', 'rgba(255, 159, 64, 0.6)');
     }
-    if (result.metrics.raw_metrics.r2_score) {
-        addDataset('R2 Score', 'r2_score', 'rgba(54, 162, 235, 0.6)');
+
+    if (result.metrics.raw_metrics.r2) {
+        addDataset('R2 Score', 'r2', 'rgba(54, 162, 235, 0.6)');
     }
+
+    if (result.metrics.raw_metrics.mse) {
+        addDataset('MSE', 'mse', 'rgba(255, 99, 132, 0.6)');
+    }
+
+    if (result.metrics.raw_metrics.mae) {
+        addDataset('MAE', 'mae', 'rgba(153, 102, 255, 0.6)');
+    }
+
 
     addDataset('Model Size (MB)', 'model_size', 'rgba(255, 206, 86, 0.6)'); 
 
@@ -354,16 +312,39 @@ function renderMetricsChart(result) {
             plugins: {
                 legend: { position: 'top' },
                 title: { display: true, text: 'Model Metrics Comparison' },
+                tooltip: {
+                    callbacks: {
+                        label: function(tooltipItem) {
+                            // Get the label and value
+                            const datasetLabel = tooltipItem.dataset.label || '';
+                            const value = tooltipItem.raw;
+    
+                            // Return the label and full value
+                            return `${datasetLabel}: ${value.toLocaleString(undefined, { maximumFractionDigits: 20 })}`;
+                        }
+                    }
+                }
             },
             scales: {
                 x: { title: { display: true, text: 'Model Type' } },
-                y: { title: { display: true, text: 'Value' }, beginAtZero: true },
+                y: {
+                    title: { display: true, text: 'Value' },
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString(undefined, { maximumFractionDigits: 20 });
+                        }
+                    }
+                },
             },
-        },
+        }
     });
-
      // Add the download button dynamically
      const modalBody = document.querySelector('.modal-body');
+
+     // Add chart to the modal
+    const chartCanvas = document.getElementById('metricsChart');
+    chartCanvas.style.display = 'block';
 
      // Remove existing download button to avoid duplicates
      const existingButton = document.getElementById('downloadButton');
