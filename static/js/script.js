@@ -62,6 +62,24 @@ handleFileInput('trainingSetDropzone', 'trainingSetFile');
 handleFileInput('pythonFileDropzone', 'pythonFile');
 handleFileInput('modelFileDropzone', 'modelFile');
 
+
+function validateCheckboxSelection() {
+    // Get the checkboxes for static and dynamic quantization
+    const staticQuantInt8 = document.getElementById('staticQuantInt8').checked;
+    const staticQuantFloat16 = document.getElementById('staticQuantFloat16').checked;
+    const dynamicQuantInt8 = document.getElementById('dynamicQuantInt8').checked;
+    const dynamicQuantFloat16 = document.getElementById('dynamicQuantFloat16').checked;
+
+    // Check if at least one checkbox is selected
+    if (!staticQuantInt8 && !staticQuantFloat16 && !dynamicQuantInt8 && !dynamicQuantFloat16) {
+        alert('Please select at least one quantization option before submitting.');
+        return false; // Prevent form submission
+    }
+
+    return true; // Allow form submission
+}
+
+
 // Show and hide loading spinner
 function showLoadingSpinner() {
     const spinner = document.getElementById('loadingSpinner');
@@ -75,6 +93,11 @@ function hideLoadingSpinner() {
 
 document.getElementById('modelForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    // Validate checkbox selection
+    if (!validateCheckboxSelection()) {
+        return; // Stop submission if validation fails
+    }
 
     const form = document.getElementById('modelForm');
     const formData = new FormData(form);
